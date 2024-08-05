@@ -1,0 +1,5 @@
+openai==1.37.0
+pydantic==2.8.2
+load_dotenv
+azure-search-documents==11.5.1
+azure-identity==1.17.1
