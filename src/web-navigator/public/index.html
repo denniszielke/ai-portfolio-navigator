@@ -25,14 +25,15 @@
 <div class="wrapper">
 
   <div style="padding:20px;align-content: center;padding-left:10%">
-  <div style="width: 10%;height: 30px;float:left">Copilot:</div>
+  <div style="width: 10%;height: 40px;float:left; display:block">Copilot:</div>
       <div id="copilot-chat" style="width: 90%;height: 30px;">balablabla</div>
   </div>
   <header class="site-header">
     <div class="inner-wrap">
-      <h1>Shopping.</h1>
+      <h1>Shopping Copilot.</h1>
       <ul class="list-inline">
         <li><input type="text" id="search" placeholder="Search"><a href="#" class="search"><i class="fa fa-search"></i></a></li>
+        <li><button id="your-likes" class="your-likes" data-item-num="3">For you <i class="fa fa-lg fa-heart"></i></button></li>
         <li><button class="your-cart js-toggle-cart" data-item-num="3">Your Cart <i class="fa fa-lg fa-shopping-cart"></i></button></li>
       </ul>
     </div>
@@ -52,7 +53,7 @@
 
   <div class="inner-wrap content-wrap">
 
-    <div class="product-grid">
+    <div id="product-grid" class="product-grid">
 
     </div>
   </div>
@@ -99,6 +100,8 @@
   </div>
 
 </div>
+
+<select id="likedProducts" name="likedProducts" style="display:none"></select>
  </main>
         
 <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>

@@ -68,14 +68,15 @@ pathToProductFiles = './products.json'
 import pandas as pd
 df = pd.read_json(pathToProductFiles)
 
-# In-memory database (for demonstration purposes)
 items = []
 
 class QueryModel(BaseModel):
     query: str | None = None
     history: str | None = None
 
-# Pydantic model for item data
+class RecommendationModel(BaseModel):
+    ids: list[str] = []
+
 class Item(BaseModel):
     id: int | None = None
     name: str | None = None
@@ -101,7 +102,8 @@ async def query_items(input: QueryModel) -> ResponseModel:
     vector = VectorizedQuery(vector=get_embedding(input.query), k_nearest_neighbors=12, fields="vector")
     found_docs = list(search_client.search(
         search_text=input.query,
-        query_type="semantic",
+        query_type="semantic", query_answer="extractive",
+        query_answer_threshold=0.8,
         semantic_configuration_name="products-semantic-config",
         vector_queries=[vector],
         select=["id", "name", "description", "category", "brand", "price", "tags"],
@@ -133,21 +135,83 @@ async def query_items(input: QueryModel) -> ResponseModel:
     parameters = [system_prompt, ' Context:', found_docs_as_text , ' Question:', input.query]
     joined_parameters = ''.join(parameters)
 
-    response = client.chat.completions.create(
-        model = deployment_name,
-        messages = [{"role" : "assistant", "content" : joined_parameters}],
-    )
+    # response = client.chat.completions.create(
+    #     model = deployment_name,
+    #     messages = [{"role" : "assistant", "content" : joined_parameters}],
+    # )
 
-    print (response.choices[0].message.content)
-    print(response)
+    # print (response.choices[0].message.content)
+    # print(response)
 
     responseModel = ResponseModel()
     responseModel.query = input.query,
-    responseModel.message = response.choices[0].message.content
+    responseModel.message = "ll"# response.choices[0].message.content
     responseModel.results = list_of_items
     print (responseModel)
     return responseModel
     # return df.to_dict(orient='records')[0:12]
+
+
+@app.post("/recommend", response_model=ResponseModel)
+async def recommend_items(input: RecommendationModel) -> ResponseModel:
+    print(input)
+
+    vectors = []
+
+
+    for recommendedDoc in input.ids:
+        print(recommendedDoc)
+        foundDoc = search_client.get_document(key=recommendedDoc, selected_fields=["id", "name", "vector"])
+        vectors.append(foundDoc["vector"])
+        print(foundDoc)
+    
+        vector = VectorizedQuery(vector=get_embedding(input.query), k_nearest_neighbors=12, fields="vector")
+        found_docs = list(search_client.search(
+            search_text=None,
+            vector_queries=vectors,
+            select=["id", "name", "description", "category", "brand", "price", "tags"],
+            top=12
+        ))
+    
+    print(found_docs)
+    list_of_items = []
+    found_docs_as_text = " "
+    for doc in found_docs:   
+        print(doc) 
+        item = Item(
+            id = doc["id"],
+            name = doc["name"],
+            description = doc["description"],
+            brand = doc["brand"],
+            price = doc["price"],
+            tags = doc["tags"],
+            category = doc["category"],
+            score = doc["@search.score"]
+        )
+        list_of_items.append(item)
+        found_docs_as_text += " "+ "Name: {}".format(doc["name"]) +" "+ "Description: {}".format(doc["description"]) +" "+ "Brand: {}".format(doc["brand"]) +" "+ "Price: {}".format(doc["price"]) +" "+ "Tags: {}".format(doc["tags"]) +" "+ "Category: {}".format(doc["category"]) +" "
+
+    list_of_items.sort(key=sort_Items, reverse=True)
+
+    system_prompt = """You are an assistant to the user, you are given some context below. Please answer the query of the user in a full sentence and refer to the question that you are responding to in less than 300 characters<. Answer only with the correct information and be as correct as possible. The user is asking about the following products:"""
+
+    # parameters = [system_prompt, ' Context:', found_docs_as_text , ' Question:', input.query]
+    joined_parameters = ''.join(parameters)
+
+    # response = client.chat.completions.create(
+    #     model = deployment_name,
+    #     messages = [{"role" : "assistant", "content" : joined_parameters}],
+    # )
+
+    # print (response.choices[0].message.content)
+    # print(response)
+
+    responseModel = ResponseModel()
+    responseModel.query = input.query,
+    responseModel.message = "Your recommendations:" # response.choices[0].message.content
+    responseModel.results = list_of_items
+    print (responseModel)
+    return responseModel
 
 app.mount("/", StaticFiles(directory="public", html=True), name="static")
 
